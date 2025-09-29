@@ -1,0 +1,130 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           Int       @id @default(autoincrement())
+  username     String    @unique
+  email        String    @unique
+  passwordHash String    @map("password_hash")
+  fullName     String    @map("full_name")
+  role         UserRole  @default(ADMIN)
+  isActive     Boolean   @default(true) @map("is_active")
+  lastLogin    DateTime? @map("last_login")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  albums      Album[]
+  photos      Photo[]
+  auditLogs   AuditLog[]
+
+  @@map("users")
+}
+
+model Service {
+  id             Int       @id @default(autoincrement())
+  name           String
+  description    String
+  durationMinutes Int      @map("duration_minutes")
+  price          Float
+  isActive       Boolean   @default(true) @map("is_active")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  // Relations
+  appointments   Appointment[]
+
+  @@map("services")
+}
+
+model Appointment {
+  id                   Int               @id @default(autoincrement())
+  serviceId            Int               @map("service_id")
+  appointmentDate      DateTime          @map("appointment_date")
+  appointmentTime      String            @map("appointment_time")
+  customerName         String            @map("customer_name")
+  customerEmail        String            @map("customer_email")
+  customerPhone        String            @map("customer_phone")
+  status               AppointmentStatus @default(PENDING)
+  specialRequests      String?           @map("special_requests")
+  createdAt            DateTime          @default(now()) @map("created_at")
+  updatedAt            DateTime          @updatedAt @map("updated_at")
+
+  // Relations
+  service Service @relation(fields: [serviceId], references: [id])
+
+  @@map("appointments")
+  
+  @@index([appointmentDate])
+  @@index([status])
+}
+
+model Album {
+  id             Int       @id @default(autoincrement())
+  createdById    Int       @map("created_by")
+  title          String
+  description    String?
+  shootDate      DateTime? @map("shoot_date")
+  coverPhotoUrl  String?   @map("cover_photo_url")
+  isPublished    Boolean   @default(false) @map("is_published")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  // Relations
+  createdBy User   @relation(fields: [createdById], references: [id])
+  photos    Photo[]
+
+  @@map("albums")
+}
+
+model Photo {
+  id          Int      @id @default(autoincrement())
+  albumId     Int      @map("album_id")
+  uploadedById Int     @map("uploaded_by")
+  photoUrl    String   @map("photo_url")
+  cloudinaryId String? @map("cloudinary_id")
+  filename    String
+  fileSize    Int      @map("file_size")
+  sortOrder   Int      @default(0) @map("sort_order")
+  uploadedAt  DateTime @default(now()) @map("uploaded_at")
+
+  // Relations
+  album      Album @relation(fields: [albumId], references: [id])
+  uploadedBy User  @relation(fields: [uploadedById], references: [id])
+
+  @@map("photos")
+}
+
+model AuditLog {
+  id         Int      @id @default(autoincrement())
+  userId     Int      @map("user_id")
+  action     String
+  tableName  String   @map("table_name")
+  recordId   Int      @map("record_id")
+  oldValues  String?
+  newValues  String?
+  ipAddress  String?  @map("ip_address")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("audit_logs")
+}
+
+enum UserRole {
+  ADMIN
+  PHOTOGRAPHER
+}
+
+enum AppointmentStatus {
+  PENDING
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
